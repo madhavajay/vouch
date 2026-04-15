@@ -69,6 +69,15 @@ export def init-file [
 #   - Optional platform prefix: platform:username (e.g., github:user).
 #   - Denounce with minus prefix: -username or -platform:username.
 #   - Optional details after a space following the handle.
+#   - Optional key=value attributes after the handle, such as:
+#       github:user cap=issue,pr
+#   - Attr values with spaces must be double-quoted, such as:
+#       github:user details=\"trusted reporter\"
+#   - Attribute keys are serialized in sorted order.
+#   - `cap=` values are lowercased, deduped, and sorted.
+#   - Capability names use lowercase letters, numbers, and hyphens.
+#   - `denounced` and `unknown` are reserved.
+#   - `*` may only be used by itself.
 " | save $path
 }
 
@@ -91,11 +100,11 @@ def parse-line []: string -> record {
   let line = $in
 
   if ($line | str trim | is-empty) {
-    return { type: "blank", platform: null, username: null, details: null }
+    return { type: "blank", platform: null, username: null, details: null, attrs: {} }
   }
 
   if ($line | str trim | str starts-with "#") {
-    return { type: "comment", platform: null, username: null, details: $line }
+    return { type: "comment", platform: null, username: null, details: $line, attrs: {} }
   }
 
   let trimmed = $line | str trim
@@ -107,15 +116,18 @@ def parse-line []: string -> record {
   # Split handle from details (first space separates them)
   let parts = $rest | split row " " --number 2
   let handle = $parts | first
-  let details = if ($parts | length) > 1 { $parts | get 1 } else { null }
+  let tail = if ($parts | length) > 1 { $parts | get 1 } else { null }
 
   let parsed = parse-handle $handle
+  let attrs = parse-attrs $tail
+  let details = if ($attrs | is-empty) { $tail } else { $attrs.details? | default null }
 
   {
     type: (if $is_denounce { "denounce" } else { "vouch" })
     platform: $parsed.platform
     username: $parsed.username
     details: $details
+    attrs: $attrs
   }
 }
 
@@ -133,8 +145,95 @@ def format-line []: record -> string {
       } else {
         $rec.username
       }
-      let suffix = if $rec.details != null { $" ($rec.details)" } else { "" }
+      # Prefer structured attrs like `github:alice cap=issue,pr` over
+      # legacy trailing details like `-github:badguy AI slop`.
+      let attrs = canonicalize-attrs ($rec.attrs? | default {})
+      let attr_text = format-attrs $attrs
+      let suffix = if ($attr_text | is-not-empty) {
+        $" ($attr_text)"
+      } else if $rec.details != null {
+        $" ($rec.details)"
+      } else {
+        ""
+      }
       $"($prefix)($handle)($suffix)"
     }
   }
+}
+
+# Parse an attribute tail into a record of key/value pairs.
+#
+# To preserve compatibility with legacy free-form details, the tail is
+# only treated as structured when the first token is key=value and all
+# remaining tokens are also key=value pairs.
+def parse-attrs [tail?: string] {
+  if ($tail == null) or (($tail | str trim) | is-empty) {
+    return {}
+  }
+
+  mut attrs = {}
+  mut rest = $tail | str trim
+  while ($rest | is-not-empty) {
+    let match = (
+      $rest
+      | parse -r '^(?<key>[^ =]+)=(?:"(?<quoted>(?:[^"\\]|\\.)*)"|(?<bare>[^ ]+))(?: (?<rest>.*))?$'
+    )
+
+    if ($match | is-empty) {
+      return {}
+    }
+
+    let token = $match | first
+    let key = $token.key
+    let value = if (($token.quoted? | default null) != null) {
+      unescape-attr-value $token.quoted
+    } else {
+      $token.bare
+    }
+
+    if ($key | is-empty) or ($value | is-empty) {
+      return {}
+    }
+
+    $attrs = ($attrs | upsert $key $value)
+    $rest = $token.rest? | default ""
+  }
+
+  $attrs
+}
+
+# Format a record of key/value pairs for Trustdown.
+def format-attrs [attrs: record] {
+  let keys = $attrs | transpose key value | get key | sort
+
+  $keys
+  | each { |key|
+    let value = $attrs | get $key
+    $"($key)=((format-attr-value $value))"
+  }
+  | str join " "
+}
+
+def canonicalize-attrs [attrs: record] {
+  if ($attrs.cap? | default null) == "*" { $attrs | reject cap } else { $attrs }
+}
+
+def format-attr-value [value] {
+  let text = $value | into string
+  if (($text | str contains " ") or ($text | str contains '"') or ($text | str contains "\\")) {
+    let escaped = (
+      $text
+      | str replace -a "\\" "\\\\"
+      | str replace -a '"' '\\"'
+    )
+    $'"($escaped)"'
+  } else {
+    $text
+  }
+}
+
+def unescape-attr-value [value: string] {
+  $value
+  | str replace -a '\\"' '"'
+  | str replace -a "\\\\" "\\"
 }

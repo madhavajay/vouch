@@ -1,10 +1,11 @@
 # Check Issue
 
-Check if an issue author is a vouched contributor. Bots and
+Check if an issue author is allowed to submit issues. Bots and
 collaborators with write access are automatically allowed. Denounced
-users are always blocked. When `require-vouch` is true (default),
-unvouched users are also blocked. Use `auto-close` to close issues
-from blocked users.
+users are always blocked. Positive entries with `cap=issue` are
+allowed, and positive entries without `cap=` default
+to full access. When `require-vouch` is true (default), unvouched users
+are also blocked. Use `auto-close` to close issues from blocked users.
 
 ## Usage
 

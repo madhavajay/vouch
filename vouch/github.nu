@@ -3,8 +3,10 @@
 use file.nu [default-path, "from td", init-file, open-file, "to td"]
 use git.nu [commit-and-push]
 use codeowners.nu [parse-codeowners]
+use lib.nu
 use lib.nu [
   add-user
+  "caps-allow"
   check-user
   denounce-user
   parse-comment
@@ -15,18 +17,21 @@ use template.nu
 const pr_template = path self ./templates/github-pr-unvouched
 const issue_template = path self ./templates/github-issue-unvouched
 
-# Check if a PR author is a vouched contributor.
+# Check if a PR author is allowed to submit pull requests.
 #
 # This checks if the PR author is:
 #   1. A bot (ends with [bot])
 #   2. A collaborator with write access
-#   3. In the vouched contributors list
+#   3. In the vouched contributors list with PR capability
+#      or implicit full access (default / cap=*)
 #   4. Denounced
 #
 # When --require-vouch is true (default), unvouched users are blocked.
 # When --require-vouch is false, only denounced users are blocked.
 #
 # When --auto-close is true and user is unvouched/denounced, the PR is closed.
+#
+# Positive entries without `cap=` default to full access.
 #
 # --template-file can be used to supply a path to a custom template, which
 # follows the string convention as seen in Nushell's "format pattern". Note the
@@ -89,9 +94,13 @@ export def gh-check-pr [
     return "vouched"
   }
 
-  if $result.status == "vouched" {
+  if (($result.status == "vouched") and (has-required-capability $result "pr")) {
     print $"($pr_author) is in the vouched contributors list"
     return "vouched"
+  }
+
+  if $result.status == "vouched" {
+    print $"($pr_author) is vouched, but lacks pr capability"
   }
 
   if $result.status == "denounced" {
@@ -157,18 +166,21 @@ export def gh-check-pr [
   return "closed"
 }
 
-# Check if an issue reporter is a vouched contributor.
+# Check if an issue reporter is allowed to submit issues.
 #
 # This checks if the issue author is:
 #   1. A bot (ends with [bot])
 #   2. A collaborator with write access
-#   3. In the vouched contributors list
+#   3. In the vouched contributors list with issue capability
+#      or implicit full access (default / cap=*)
 #   4. Denounced
 #
 # When --require-vouch is true (default), unvouched users are blocked.
 # When --require-vouch is false, only denounced users are blocked.
 #
 # When --auto-close is true and user is unvouched/denounced, the issue is closed.
+#
+# Positive entries without `cap=` default to full access.
 #
 # --template-file can be used to supply a path to a custom template, which
 # follows the string convention as seen in Nushell's "format pattern". Note the
@@ -235,9 +247,13 @@ export def gh-check-issue [
     return "vouched"
   }
 
-  if $result.status == "vouched" {
+  if (($result.status == "vouched") and (has-required-capability $result "issue")) {
     print $"($issue_author) is in the vouched contributors list"
     return "vouched"
+  }
+
+  if $result.status == "vouched" {
+    print $"($issue_author) is vouched, but lacks issue capability"
   }
 
   if $result.status == "denounced" {
@@ -972,6 +988,7 @@ def gh-apply-action [
 # Returns a record with:
 #   - status: "bot", "collaborator", "vouched", "denounced", or "unknown"
 #   - permission: collaborator permission level (only set for "collaborator" status)
+#   - caps: ["*"] for full access, or explicit capability list when present
 #
 # By default, collaborator permissions can short-circuit the check. Use
 # `--allow-collaborator=false` when you only want file-based status.
@@ -1033,7 +1050,8 @@ export def gh-check-user [
 
   # Check the status using standard lib functions
   let vouch_status = $records | check-user $user --default-platform github
-  { status: $vouch_status }
+  let caps = ($records | lib get-caps $user --default-platform github)
+  { status: $vouch_status, caps: $caps.caps }
 }
 
 # Create a pull request from the given branch into the
@@ -1070,6 +1088,11 @@ def open-pr [
       $"/repos/($owner)/($repo)/git/refs/heads/($branch)"
     )
   }
+}
+
+# Check whether a gh-check-user result satisfies a required capability.
+def has-required-capability [result: record, capability: string] {
+  lib caps-allow ($result.caps? | default []) $capability
 }
 
 # Add a reaction emoji to a GitHub issue comment using the Reactions API.

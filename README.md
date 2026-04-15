@@ -100,9 +100,12 @@ use vouch *
 help add
 help check
 help denounce
+help get-caps
+help has-caps
 help gh-check-issue
 help gh-check-pr
 help gh-manage-by-issue
+help set-caps
 ```
 
 #### Local Commands
@@ -138,12 +141,51 @@ vouch denounce badactor --reason "Submitted AI slop"
 vouch denounce badactor --write
 ```
 
+**Inspect a user's capabilities:**
+
+```bash
+vouch get-caps someuser
+```
+
+Outputs one of:
+
+- `*` for full access
+- a comma-separated cap list such as `issue,pr`
+- `denounced`
+- `unknown`
+
+**Check whether a user has one or more capabilities:**
+
+```bash
+vouch has-caps someuser issue
+vouch has-caps someuser issue,pr
+vouch has-caps someuser issue --explicit
+```
+
+Outputs `true` or `false`. Capabilities are comma-separated, and order
+does not matter because they are treated as a set. Use `--explicit` to
+require the capability to be explicitly listed instead of inherited
+from implicit full access.
+
+**Set a user's capabilities:**
+
+```bash
+# Preview an issue-only entry
+vouch set-caps someuser issue
+
+# Allow both issues and PRs
+vouch set-caps someuser issue,pr --write
+
+# Restore implicit full access
+vouch set-caps someuser '*' --write
+```
+
 #### GitHub Integration
 
 Requires the `GITHUB_TOKEN` environment variable. If not set and `gh`
 is available, the token from `gh auth token` is used.
 
-**Check if an issue author is vouched:**
+**Check if an issue author is vouched with the capability to submit issues:**
 
 ```bash
 # Check issue author status (dry run)
@@ -160,8 +202,11 @@ vouch gh-check-issue 123 --repo owner/repo --require-vouch=false --auto-close
 ```
 
 Outputs status: `skipped` (bot/collaborator), `vouched`, `allowed`, or `closed`.
+Entries with `cap=issue` or `cap=issue,pr` pass this check. Positive
+entries without `cap=` default to full access, and `cap=*` is also
+treated as full access on read.
 
-**Check if a PR author is vouched:**
+**Check if a PR author is vouched with the capability to submit PRs:**
 
 ```bash
 # Check PR author status (dry run)
@@ -178,6 +223,9 @@ vouch gh-check-pr 123 --repo owner/repo --require-vouch=false --auto-close
 ```
 
 Outputs status: `skipped` (bot/collaborator), `vouched`, `allowed`, or `closed`.
+Entries with `cap=pr` or `cap=issue,pr` pass this check. Positive
+entries without `cap=` default to full access, and `cap=*` is also
+treated as full access on read.
 
 **Manage contributor status via issue comments:**
 
@@ -216,10 +264,16 @@ use vouch/lib.nu *
 
 let records = open VOUCHED.td
 $records | check-user "mitchellh" --default-platform github  # "vouched", "denounced", or "unknown"
+$records | get-caps "mitchellh"                              # {status, caps}
 $records | add-user "newuser"                                # returns updated table
 $records | denounce-user "badactor" "reason"                 # returns updated table
+$records | set-caps "newuser" [issue pr]                     # returns updated table
 $records | remove-user "olduser"                             # returns updated table
 ```
+
+The library `set-caps` command takes a Nu list such as `[issue pr]`.
+The CLI `vouch set-caps` command takes a comma-separated string such as
+`issue,pr`.
 
 ## Vouched File Format
 
@@ -230,6 +284,8 @@ looked up at `VOUCHED.td` or `.github/VOUCHED.td` by default.
 ```
 # Comments start with #
 username
+platform:ideasguy cap=issue
+platform:goodguy cap=issue,pr
 platform:username
 -platform:denounced-user
 -platform:denounced-user reason for denouncement
@@ -239,6 +295,18 @@ platform:username
 - Optionally specify a platform prefix: `platform:username` (e.g., `github:mitchellh`).
 - Denounce a user by prefixing with `-`.
 - Optionally add details after a space following the handle.
+- Optionally add key=value attributes after the handle.
+- Attribute values with spaces must be double-quoted, for example
+  `details="trusted reporter"`.
+- `cap=issue,pr` grants explicit capabilities.
+- Capability names are normalized to lowercase and must use only
+  letters, numbers, and hyphens.
+- Positive entries without `cap=` default to full access for all capabilities.
+- `cap=*` is accepted as full access on read, but omitting `cap=` is the
+  canonical serialized form.
+- `denounced` and `unknown` are reserved and may not be used as
+  explicit capability names.
+- `*` may only be used by itself, never with other capabilities.
 
 The `from td` and `to td` commands are exported by the module, so
 Nushell's `open` command works natively with `.td` files to decode

@@ -14,10 +14,20 @@
 #  - Optionally specify platform: `platform:username` (e.g., `github:mitchellh`).
 #  - To denounce a user, prefix with minus: `-username` or `-platform:username`.
 #  - Optionally, add details after a space following the handle.
+#  - Optionally, add key=value attrs after the handle, such as
+#    `cap=issue` or `cap=issue,pr`.
+#  - Attr values with spaces must be double-quoted, such as
+#    `details="trusted reporter"`.
+#  - Capability names are normalized to lowercase and use only letters,
+#    numbers, and hyphens.
+#  - `denounced` and `unknown` are reserved.
+#  - `*` may only be used by itself.
 #
 # Maintainers can vouch for new contributors by commenting "lgtm" on an
 # issue by the author. Maintainers can denounce users by commenting
 # "denounce" or "denounce [username]" on an issue or PR.
 mitchellh
+github:ideasguy cap=issue
+github:goodguy cap=issue,pr
 -github:badguy
 -github:slopmaster3000 Submitted endless amounts of AI slop
