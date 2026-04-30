@@ -6,15 +6,14 @@
 # of file patterns they own. Owners are sorted alphabetically.
 #
 # Owners have the leading "@" stripped.
-#
-# Example:
-#   open -r CODEOWNERS | parse-codeowners
-#   ╭───┬────────────┬──────────────────╮
-#   │ # │   owner    │      files       │
-#   ├───┼────────────┼──────────────────┤
-#   │ 0 │ acme/core  │ [/src/]          │
-#   │ 1 │ bob        │ [/src/, /docs/]  │
-#   ╰───┴────────────┴──────────────────╯
+@example "Parse codeowners" { open -r CODEOWNERS | parse-codeowners } --result "
+╭───┬────────────┬──────────────────╮
+│ # │   owner    │      files       │
+├───┼────────────┼──────────────────┤
+│ 0 │ acme/core  │ [/src/]          │
+│ 1 │ bob        │ [/src/, /docs/]  │
+╰───┴────────────┴──────────────────╯
+"
 export def parse-codeowners []: string -> table<owner: string, files: list<string>> {
   $in
     | lines

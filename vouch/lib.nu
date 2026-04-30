@@ -177,21 +177,18 @@ export def remove-user [
 #   - action: "vouch", "denounce", "unvouch", or null if no match
 #   - user: target username (or null if not specified)
 #   - reason: reason string (or "" if not specified; always "" for unvouch)
-#
-# Examples:
-#
-#   parse-comment "vouch"
-#   # => {action: vouch, user: null, reason: ""}
-#
-#   parse-comment "vouch @alice good work"
-#   # => {action: vouch, user: alice, reason: "good work"}
-#
-#   parse-comment "denounce @badguy spammer"
-#   # => {action: denounce, user: badguy, reason: spammer}
-#
-#   parse-comment "random text"
-#   # => {action: null, user: null, reason: ""}
-#
+@example "Vouch without specifying the user" { parse-comment "vouch" } --result "
+{action: vouch, user: null, reason: \"\"}  
+"
+@example "Vouch a specified user with a reason" { parse-comment "vouch @alice good work" } --result "
+{action: vouch, user: alice, reason: \"good work\"}  
+"
+@example "Denounce a user with a reason" { parse-comment "denounce @badguy spammer" } --result "
+{action: denounce, user: badguy, reason: spammer}  
+"
+@example "No vouching or denouncing" { parse-comment "random text" } --result "
+{action: null, user: null, reason: ""}  
+"
 export def parse-comment [
   body: string,                                     # Comment body to parse
   --vouch-keyword: list<string> = ["vouch"],        # Keywords that trigger vouching

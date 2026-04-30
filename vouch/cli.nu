@@ -8,18 +8,9 @@ use lib.nu [add-user, check-user, denounce-user, remove-user]
 #
 # This adds the user to the vouched list, removing any existing entry
 # (vouched or denounced) for that user first.
-#
-# Examples:
-#
-#   # Preview new file contents (default)
-#   ./vouch.nu add someuser
-#
-#   # Write the file in-place
-#   ./vouch.nu add someuser --write
-#
-#   # Add with platform prefix
-#   ./vouch.nu add github:someuser --write
-#
+@example "Preview new file contents (default)" { ./vouch.nu add someuser }
+@example "Write the file in-place" { ./vouch.nu add someuser --write }
+@example "Add with platform prefix" { ./vouch.nu add github:someuser --write }
 export def add [
   username: string,          # Username to vouch for (supports platform:user format)
   --default-platform: string = "", # Assumed platform for entries without explicit platform
@@ -46,12 +37,8 @@ export def add [
 #   0 - vouched
 #   1 - denounced
 #   2 - unknown
-#
-# Examples:
-#
-#   ./vouch.nu check someuser
-#   ./vouch.nu check github:someuser
-#
+@example "Check a user using the default platform" { ./vouch.nu check someuser }
+@example "Check a user and specify the platform" { ./vouch.nu check github:someuser }
 export def check [
   username: string,          # Username to check (supports platform:user format)
   --default-platform: string = "", # Assumed platform for entries without explicit platform
@@ -81,21 +68,10 @@ export def check [
 #
 # This removes any existing entry for the user and adds them as denounced.
 # An optional reason can be provided which will be added after the username.
-#
-# Examples:
-#
-#   # Preview new file contents (default)
-#   ./vouch.nu denounce badactor
-#
-#   # Denounce with a reason
-#   ./vouch.nu denounce badactor --reason "Submitted AI slop"
-#
-#   # Write the file in-place
-#   ./vouch.nu denounce badactor --write
-#
-#   # Denounce with platform prefix
-#   ./vouch.nu denounce github:badactor --write
-#
+@example "Preview new file contents (default)" { ./vouch.nu denounce badactor }
+@example "Denounce with a reason" { ./vouch.nu denounce badactor --reason "Submitted AI slop" }
+@example "Write the file in-place" { ./vouch.nu denounce badactor --write }
+@example "Denounce with platform prefix" { ./vouch.nu denounce github:badactor --write }
 export def denounce [
   username: string,          # Username to denounce (supports platform:user format)
   --default-platform: string = "", # Assumed platform for entries without explicit platform
@@ -204,18 +180,9 @@ export def main [] {
 #
 # This removes any existing entry (vouched or denounced) for the user.
 # The user will become unknown after this operation.
-#
-# Examples:
-#
-#   # Preview new file contents (default)
-#   ./vouch.nu remove someuser
-#
-#   # Write the file in-place
-#   ./vouch.nu remove someuser --write
-#
-#   # Remove with platform prefix
-#   ./vouch.nu remove github:someuser --write
-#
+@example "Preview new file contents (default)" { ./vouch.nu remove someuser }
+@example "Write the file in-place" { ./vouch.nu remove someuser --write }
+@example "Remove with platform prefix" { ./vouch.nu remove github:someuser --write }
 export def remove [
   username: string,          # Username to remove (supports platform:user format)
   --default-platform: string = "", # Assumed platform for entries without explicit platform

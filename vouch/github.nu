@@ -46,18 +46,9 @@ const issue_template = path self ./templates/github-issue-unvouched
 # can be used as an example.
 #
 # Outputs status: "skipped" (bot), "vouched", "allowed", or "closed".
-#
-# Examples:
-#
-#   # Check PR author status (dry run)
-#   ./vouch.nu gh-check-pr 123
-#
-#   # Auto-close unvouched PRs
-#   ./vouch.nu gh-check-pr 123 --auto-close --dry-run=false
-#
-#   # Allow unvouched users, only block denounced
-#   ./vouch.nu gh-check-pr 123 --require-vouch=false --auto-close
-#
+@example "Check PR author status (dry run)" { ./vouch.nu gh-check-pr 123 }
+@example "Auto-close unvouched PRs" { ./vouch.nu gh-check-pr 123 --auto-close --dry-run=false }
+@example "Allow unvouched users, only block denounced" { ./vouch.nu gh-check-pr 123 --require-vouch=false --auto-close }
 export def gh-check-pr [
   pr_number: int,              # GitHub PR number
   --repo (-R): string,         # Repository in "owner/repo" format (required)
@@ -195,18 +186,9 @@ export def gh-check-pr [
 # which can be used as an example.
 #
 # Outputs status: "skipped" (bot), "vouched", "allowed", or "closed".
-#
-# Examples:
-#
-#   # Check issue author status (dry run)
-#   ./vouch.nu gh-check-issue 123
-#
-#   # Auto-close unvouched issues
-#   ./vouch.nu gh-check-issue 123 --auto-close --dry-run=false
-#
-#   # Allow unvouched users, only block denounced
-#   ./vouch.nu gh-check-issue 123 --require-vouch=false --auto-close
-#
+@example "Check issue author status (dry run)" { ./vouch.nu gh-check-issue 123 }
+@example "Auto-close unvouched issues" { ./vouch.nu gh-check-issue 123 --auto-close --dry-run=false }
+@example "Allow unvouched users, only block denounced" { ./vouch.nu gh-check-issue 123 --require-vouch=false --auto-close }
 export def gh-check-issue [
   issue_number: int,             # GitHub issue number
   --repo (-R): string,           # Repository in "owner/repo" format (required)
@@ -352,21 +334,10 @@ export def gh-check-issue [
 # customize the trigger words. Multiple keywords can be specified as a list.
 #
 # Outputs a status to stdout: "vouched", "denounced", "unvouched", or "unchanged"
-#
-# Examples:
-#
-#   # Dry run (default) - see what would happen
-#   ./vouch.nu gh-manage-by-issue 123 456789
-#
-#   # Actually perform the action
-#   ./vouch.nu gh-manage-by-issue 123 456789 --dry-run=false
-#
-#   # Custom vouch keywords
-#   ./vouch.nu gh-manage-by-issue 123 456789 --vouch-keyword [lgtm approve]
-#
-#   # Create a pull request instead of pushing directly
-#   ./vouch.nu gh-manage-by-issue 123 456789 --pull-request --dry-run=false
-#
+@example "Dry run (default) - see what would happen" { ./vouch.nu gh-manage-by-issue 123 456789 }
+@example "Actually perform the action" { ./vouch.nu gh-manage-by-issue 123 456789 --dry-run=false }
+@example "Custom vouch keywords" { ./vouch.nu gh-manage-by-issue 123 456789 --vouch-keyword [lgtm approve] }
+@example "Create a pull request instead of pushing directly" { ./vouch.nu gh-manage-by-issue 123 456789 --pull-request --dry-run=false }
 export def gh-manage-by-issue [
   issue_id: int,           # GitHub issue number
   comment_id: int,         # GitHub comment ID
@@ -518,24 +489,11 @@ export def gh-manage-by-issue [
 # customize the trigger words. Multiple keywords can be specified as a list.
 #
 # Outputs a status to stdout: "vouched", "denounced", "unvouched", or "unchanged"
-#
-# Examples:
-#
-#   # Dry run (default) - see what would happen
-#   ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample
-#
-#   # Dry run with a numerical ID found in URLs
-#   ./vouch.nu gh-manage-by-discussion 42 11579492
-#
-#   # Actually perform the action
-#   ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample --dry-run=false
-#
-#   # Custom vouch keywords
-#   ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample --vouch-keyword [lgtm approve]
-#
-#   # Create a pull request instead of pushing directly
-#   ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample --pull-request --dry-run=false
-#
+@example "Dry run (default) - see what would happen" { ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample }
+@example "Dry run with a numerical ID found in URLs" { ./vouch.nu gh-manage-by-discussion 42 11579492 }
+@example "Actually perform the action" { ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample --dry-run=false }
+@example "Custom vouch keywords" { ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample --vouch-keyword [lgtm approve] }
+@example "Create a pull request instead of pushing directly" { ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample --pull-request --dry-run=false }
 export def gh-manage-by-discussion [
   discussion_number: int,  # GitHub discussion number
   comment_node_id: oneof<int, string>, # GraphQL node ID or numerical URL ID of the comment (e.g. DC_kwDO... or 11579492)

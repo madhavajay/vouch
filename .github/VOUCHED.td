@@ -13,6 +13,7 @@ ditherdude
 doprz
 ericallam
 faukah
+freepicheep
 meherhendi
 pavelzw
 r44vc0rp
