@@ -1,13 +1,46 @@
 use std/assert
 
+use ../vouch/file.nu ["from td"]
 use ../vouch/github.nu [
   can-manage
   gh-check-issue
   gh-check-pr
   gh-manage-by-issue
 ]
+use helpers.nu [with-temp-vouched]
 
 const REPO = "mitchellh/vouch"
+const VOUCHED = "# Comment
+-github:badguy old reason"
+
+# --- gh-apply-action ---
+
+export def "test gh-apply-action updates denounced reason" [] {
+  with-temp-vouched $VOUCHED { |file|
+    let result = do {
+      nu -c (
+        "source vouch/github.nu;"
+        + " gh-apply-action denounce badguy 'new reason' "
+        + $file
+      )
+    } | complete
+
+    let contents = open --raw $file | from td
+    let entry = $contents | where username == "badguy" | first
+
+    assert equal $result.exit_code 0
+    assert equal $entry.type "denounce"
+
+    if $entry.details != "new reason" {
+      error make {
+        msg: (
+          "expected denounced reason to update to "
+          + $"'new reason', got '($entry.details)'"
+        )
+      }
+    }
+  }
+}
 
 # Skip the entire test if `gh` is not available
 # or not authenticated.
