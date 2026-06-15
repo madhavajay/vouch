@@ -2,6 +2,18 @@ use std/assert
 
 use ../vouch/file.nu ["from td", init-file, "to td", parse-handle]
 
+def vouch-record [cap?: string, details?: string] {
+  let attrs = if $cap == null {
+    (if $details == null { {} } else { {details: $details} })
+  } else if $details == null {
+    {cap: $cap}
+  } else {
+    {details: $details, cap: $cap}
+  }
+
+  [[type platform username details attrs]; ["vouch" "github" "alice" ($details | default null) $attrs]]
+}
+
 # --- from td ---
 
 export def "test from-td parses vouch entry" [] {
@@ -40,6 +52,35 @@ export def "test from-td parses denounce with details" [] {
   assert equal $entry.platform "github"
   assert equal $entry.username "slopmaster"
   assert equal $entry.details "AI slop"
+}
+
+export def "test from-td parses capability attrs" [] {
+  let result = "github:alice cap=issue,pr" | from td
+  let entry = $result | first
+  assert equal $entry.type "vouch"
+  assert equal $entry.username "alice"
+  assert equal $entry.details null
+  assert equal $entry.attrs.cap "issue,pr"
+}
+
+export def "test from-td parses multiple attrs" [] {
+  let result = "github:alice cap=issue,pr details=trusted" | from td
+  let entry = $result | first
+  assert equal $entry.type "vouch"
+  assert equal $entry.username "alice"
+  assert equal $entry.details "trusted"
+  assert equal $entry.attrs.cap "issue,pr"
+  assert equal $entry.attrs.details "trusted"
+}
+
+export def "test from-td parses quoted attr value with spaces" [] {
+  let result = 'github:alice cap=issue,pr details="trusted reporter"' | from td
+  let entry = $result | first
+  assert equal $entry.type "vouch"
+  assert equal $entry.username "alice"
+  assert equal $entry.details "trusted reporter"
+  assert equal $entry.attrs.cap "issue,pr"
+  assert equal $entry.attrs.details "trusted reporter"
 }
 
 export def "test from-td parses comment" [] {
@@ -90,6 +131,22 @@ export def "test to-td formats denounce entry" [] {
 export def "test to-td formats denounce with details" [] {
   let result = [{type: "denounce", platform: "github", username: "badguy", details: "AI slop"}] | to td
   assert equal ($result | str trim) "-github:badguy AI slop"
+}
+
+export def "test to-td formats capability attrs" [] {
+  assert equal ((vouch-record "issue,pr" | to td | str trim)) "github:alice cap=issue,pr"
+}
+
+export def "test to-td omits wildcard capability attr" [] {
+  assert equal ((vouch-record "*" | to td | str trim)) "github:alice"
+}
+
+export def "test to-td quotes attr value with spaces" [] {
+  assert equal ((vouch-record "issue,pr" "trusted reporter" | to td | str trim)) 'github:alice cap=issue,pr details="trusted reporter"'
+}
+
+export def "test to-td sorts attribute keys" [] {
+  assert equal ((vouch-record "issue,pr" "trusted" | to td | str trim)) 'github:alice cap=issue,pr details=trusted'
 }
 
 export def "test to-td formats comment" [] {

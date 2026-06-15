@@ -1,6 +1,6 @@
 use std/assert
 
-use ../vouch/file.nu ["from td"]
+use ../vouch/file.nu ["from td", "to td"]
 
 def with-temp-vouched [block: closure] {
   let dir = mktemp -d
@@ -102,6 +102,81 @@ export def "test cli denounce with reason" [] {
     let entry = $contents | where username == "eviluser" | first
     assert equal $entry.type "denounce"
     assert equal $entry.details "AI slop"
+  }
+}
+
+# --- get-caps ---
+
+export def "test cli get-caps prints wildcard for legacy entry" [] {
+  with-temp-vouched { |file|
+    let output = nu -c $'use vouch *; get-caps mitchellh --vouched-file ($file)'
+    assert equal ($output | str trim) "*"
+  }
+}
+
+# --- has-caps ---
+
+export def "test cli has-caps prints true for legacy entry" [] {
+  with-temp-vouched { |file|
+    let output = nu -c $'use vouch *; has-caps mitchellh issue --vouched-file ($file)'
+    assert equal ($output | str trim) "true"
+  }
+}
+
+export def "test cli has-caps explicit prints false for legacy entry" [] {
+  with-temp-vouched { |file|
+    let output = nu -c $'use vouch *; has-caps mitchellh issue --vouched-file ($file) --explicit'
+    assert equal ($output | str trim) "false"
+  }
+}
+
+export def "test cli has-caps explicit prints true for explicit wildcard cap" [] {
+  with-temp-vouched { |file|
+    "# Comment
+mitchellh
+github:alice cap=*
+-github:badguy
+" | save -f $file
+    let output = nu -c $'use vouch *; has-caps github:alice issue --vouched-file ($file) --explicit'
+    assert equal ($output | str trim) "true"
+  }
+}
+
+export def "test cli has-caps prints false for denied cap" [] {
+  with-temp-vouched { |file|
+    nu -c $'use vouch *; set-caps github:badguy issue --vouched-file ($file) --write'
+    let output = nu -c $'use vouch *; has-caps github:badguy pr --vouched-file ($file)'
+    assert equal ($output | str trim) "false"
+  }
+}
+
+# --- set-caps ---
+
+export def "test cli set-caps previews by default" [] {
+  with-temp-vouched { |file|
+    let output = nu -c $'use vouch *; set-caps alice issue --vouched-file ($file)'
+    assert ($output | str contains "cap=issue")
+    let contents = open --raw $file | from td
+    let entry = $contents | where username == "alice" | first
+    assert equal ($entry.attrs? | default {}) {}
+  }
+}
+
+export def "test cli set-caps lifts denounced user with --write" [] {
+  with-temp-vouched { |file|
+    nu -c $'use vouch *; set-caps github:badguy issue --vouched-file ($file) --write'
+    let contents = open --raw $file | from td
+    let entry = $contents | where username == "badguy" | first
+    assert equal $entry.type "vouch"
+    assert equal $entry.attrs.cap "issue"
+  }
+}
+
+export def "test cli set-caps rejects empty capability string" [] {
+  with-temp-vouched { |file|
+    let result = nu -c $'use vouch *; set-caps alice "" --vouched-file ($file)' | complete
+    assert equal $result.exit_code 1
+    assert ($result.stderr | str contains "must not be empty")
   }
 }
 

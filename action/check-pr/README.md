@@ -1,9 +1,11 @@
 # Check PR
 
-Check if a PR author is a vouched contributor. Bots and collaborators
+Check if a PR author is allowed to submit PRs. Bots and collaborators
 with write access are automatically allowed. Denounced users are always
-blocked. When `require-vouch` is true (default), unvouched users are
-also blocked. Use `auto-close` to close PRs from blocked users.
+blocked. Positive entries with `cap=pr` are allowed,
+and positive entries without `cap=` default to full access. When
+`require-vouch` is true (default), unvouched users are also blocked.
+Use `auto-close` to close PRs from blocked users.
 
 ## Usage
 

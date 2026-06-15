@@ -4,9 +4,12 @@ use ../vouch/file.nu ["from td", "to td"]
 use ../vouch/lib.nu [
   add-user
   check-user
+  has-caps
   denounce-user
+  get-caps
   parse-comment
   remove-user
+  set-caps
 ]
 
 def sample-records [] {
@@ -52,6 +55,51 @@ export def "test check-user matches with default platform" [] {
 export def "test check-user denounced with default platform" [] {
   let result = sample-records | check-user "badguy" --default-platform github
   assert equal $result "denounced"
+}
+
+export def "test has-caps defaults to caps=* for legacy entry" [] {
+  let result = sample-records | has-caps "mitchellh" "issue"
+  assert equal $result true
+}
+
+export def "test has-caps explicit denies legacy caps=*" [] {
+  let result = sample-records | has-caps "mitchellh" "issue" --explicit
+  assert equal $result false
+}
+
+export def "test has-caps explicit allows explicit wildcard cap" [] {
+  let records = "github:alice cap=*" | from td
+  let result = $records | has-caps "alice" "issue" --default-platform github --explicit
+  assert equal $result true
+}
+
+export def "test has-caps denies denounced user" [] {
+  let result = sample-records | has-caps "github:badguy" "issue"
+  assert equal $result false
+}
+
+export def "test has-caps honors explicit capability list" [] {
+  let records = "github:alice cap=issue" | from td
+  assert equal (
+    $records
+    | has-caps "alice" "issue" --default-platform github
+  ) true
+  assert equal (
+    $records
+    | has-caps "alice" "pr" --default-platform github
+  ) false
+}
+
+export def "test has-caps treats requested capabilities as a set" [] {
+  let records = "github:alice cap=issue,pr" | from td
+  assert equal (
+    $records
+    | has-caps "alice" "pr,issue" --default-platform github
+  ) true
+  assert equal (
+    $records
+    | has-caps "alice" "pr,review" --default-platform github
+  ) false
 }
 
 # --- add-user ---
@@ -114,6 +162,74 @@ export def "test denounce-user preserves comments" [] {
   assert equal ($comments | length) 1
 }
 
+# --- get-caps ---
+
+export def "test get-caps reports caps=* for legacy entry" [] {
+  let result = sample-records | get-caps "mitchellh"
+  assert equal $result.status "vouched"
+  assert equal $result.caps ["*"]
+  assert equal $result.explicit false
+}
+
+export def "test get-caps reports denounced user" [] {
+  let result = sample-records | get-caps "github:badguy"
+  assert equal $result.status "denounced"
+  assert equal $result.caps []
+}
+
+export def "test get-caps reports explicit caps" [] {
+  let records = "github:alice cap=issue,pr" | from td
+  let result = $records | get-caps "alice" --default-platform github
+  assert equal $result.status "vouched"
+  assert equal $result.caps [issue pr]
+  assert equal $result.explicit true
+}
+
+export def "test get-caps reports explicit wildcard" [] {
+  let records = "github:alice cap=*" | from td
+  let result = $records | get-caps "alice" --default-platform github
+  assert equal $result.status "vouched"
+  assert equal $result.caps ["*"]
+  assert equal $result.explicit true
+}
+
+export def "test get-caps normalizes caps" [] {
+  let records = "github:alice cap=PR,issue,issue" | from td
+  let result = $records | get-caps "alice" --default-platform github
+  assert equal $result.status "vouched"
+  assert equal $result.caps [issue pr]
+}
+
+export def "test get-caps rejects reserved capability name" [] {
+  let records = "github:alice cap=unknown" | from td
+  try {
+    $records | get-caps "alice" --default-platform github | ignore
+    assert false
+  } catch { |e|
+    assert ($e.msg | str contains "reserved capability name")
+  }
+}
+
+export def "test get-caps rejects invalid capability characters" [] {
+  let records = "github:alice cap=some.*" | from td
+  try {
+    $records | get-caps "alice" --default-platform github | ignore
+    assert false
+  } catch { |e|
+    assert ($e.msg | str contains "lowercase letters, numbers, and hyphens only")
+  }
+}
+
+export def "test get-caps rejects wildcard mixed with other capabilities" [] {
+  let records = "github:alice cap=*,pr" | from td
+  try {
+    $records | get-caps "alice" --default-platform github | ignore
+    assert false
+  } catch { |e|
+    assert ($e.msg | str contains "`*` must be the only capability")
+  }
+}
+
 # --- remove-user ---
 
 export def "test remove-user removes vouched user" [] {
@@ -144,6 +260,42 @@ export def "test remove-user noop for missing user" [] {
   let before = sample-records
   let after = $before | remove-user "nobody"
   assert equal ($after | length) ($before | length)
+}
+
+# --- set-caps ---
+
+export def "test set-caps lifts denounce and applies caps" [] {
+  let result = sample-records | set-caps "github:badguy" [issue]
+  let status = $result | check-user "github:badguy"
+  let caps = $result | get-caps "github:badguy"
+  assert equal $status "vouched"
+  assert equal $caps.caps [issue]
+}
+
+export def "test set-caps normalizes caps" [] {
+  let result = sample-records | set-caps "github:alice" [pr issue issue]
+  let entry = $result | where username == "alice" | first
+  let caps = $result | get-caps "github:alice"
+  assert equal $entry.attrs.cap "issue,pr"
+  assert equal $caps.caps [issue pr]
+}
+
+export def "test set-caps rejects empty capability list" [] {
+  try {
+    sample-records | set-caps "github:alice" [] | ignore
+    assert false
+  } catch { |e|
+    assert ($e.msg | str contains "must not be empty")
+  }
+}
+
+export def "test has-caps rejects empty requested capability list" [] {
+  try {
+    sample-records | has-caps "mitchellh" "" | ignore
+    assert false
+  } catch { |e|
+    assert ($e.msg | str contains "must not be empty")
+  }
 }
 
 # --- roundtrip ---

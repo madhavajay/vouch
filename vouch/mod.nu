@@ -5,8 +5,11 @@ export use cli.nu [
   add
   check
   denounce
+  "get-caps"
+  "has-caps"
   main
   remove
+  "set-caps"
   "vouch main"
 ]
 
