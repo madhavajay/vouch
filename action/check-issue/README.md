@@ -6,6 +6,8 @@ users are always blocked. Positive entries with `cap=issue` are
 allowed, and positive entries without `cap=` default
 to full access. When `require-vouch` is true (default), unvouched users
 are also blocked. Use `auto-close` to close issues from blocked users.
+When `auto-lock` is true, closed issues are also
+locked to prevent further comments.
 
 ## Usage
 
@@ -36,6 +38,7 @@ jobs:
 | --------------- | -------- | ---------------------- | ------------------------------------------------------------ |
 | `issue-number`  | Yes      |                        | GitHub issue number                                          |
 | `auto-close`    | No       | `"false"`              | Automatically close issues from unvouched or denounced users |
+| `auto-lock`     | No       | `"false"`              | Automatically lock issues after closing                      |
 | `dry-run`       | No       | `"false"`              | Print what would happen without making changes               |
 | `repo`          | No       | Current repository     | Repository in `owner/repo` format                            |
 | `require-vouch` | No       | `"true"`               | Require users to be vouched (false = only block denounced)   |
