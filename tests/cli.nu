@@ -1,27 +1,17 @@
 use std/assert
 
 use ../vouch/file.nu ["from td"]
+use helpers.nu [with-temp-vouched]
 
-def with-temp-vouched [block: closure] {
-  let dir = mktemp -d
-  let file = $dir | path join "VOUCHED.td"
-  "# Comment
+const VOUCHED = "# Comment
 mitchellh
 github:alice
--github:badguy" | save $file
-  try {
-    do $block $file
-  } catch { |e|
-    rm -rf $dir
-    error make { msg: $e.msg }
-  }
-  rm -rf $dir
-}
+-github:badguy"
 
 # --- add ---
 
 export def "test cli add previews by default" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     let output = nu -c $'use vouch *; add newuser --vouched-file ($file)'
     assert ($output | str contains "newuser")
     let contents = open --raw $file | from td
@@ -31,7 +21,7 @@ export def "test cli add previews by default" [] {
 }
 
 export def "test cli add writes with --write" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     nu -c $'use vouch *; add newuser --vouched-file ($file) --write'
     let contents = open --raw $file | from td
     let entry = $contents | where username == "newuser" | first
@@ -40,7 +30,7 @@ export def "test cli add writes with --write" [] {
 }
 
 export def "test cli add replaces denounced with --write" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     nu -c $'use vouch *; add github:badguy --vouched-file ($file) --write'
     let contents = open --raw $file | from td
     let entry = $contents | where username == "badguy" | first
@@ -51,7 +41,7 @@ export def "test cli add replaces denounced with --write" [] {
 # --- check ---
 
 export def "test cli check vouched exits 0" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     let result = do { nu -c $'use vouch *; check mitchellh --vouched-file ($file)' } | complete
     assert equal $result.exit_code 0
     assert ($result.stdout | str contains "vouched")
@@ -59,7 +49,7 @@ export def "test cli check vouched exits 0" [] {
 }
 
 export def "test cli check denounced exits 1" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     let result = do { nu -c $'use vouch *; check github:badguy --vouched-file ($file)' } | complete
     assert equal $result.exit_code 1
     assert ($result.stdout | str contains "denounced")
@@ -67,7 +57,7 @@ export def "test cli check denounced exits 1" [] {
 }
 
 export def "test cli check unknown exits 2" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     let result = do { nu -c $'use vouch *; check nobody --vouched-file ($file)' } | complete
     assert equal $result.exit_code 2
     assert ($result.stdout | str contains "unknown")
@@ -77,7 +67,7 @@ export def "test cli check unknown exits 2" [] {
 # --- denounce ---
 
 export def "test cli denounce previews by default" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     let output = nu -c $'use vouch *; denounce eviluser --vouched-file ($file)'
     assert ($output | str contains "eviluser")
     let contents = open --raw $file | from td
@@ -87,7 +77,7 @@ export def "test cli denounce previews by default" [] {
 }
 
 export def "test cli denounce writes with --write" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     nu -c $'use vouch *; denounce eviluser --vouched-file ($file) --write'
     let contents = open --raw $file | from td
     let entry = $contents | where username == "eviluser" | first
@@ -96,7 +86,7 @@ export def "test cli denounce writes with --write" [] {
 }
 
 export def "test cli denounce with reason" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     nu -c $'use vouch *; denounce eviluser --vouched-file ($file) --write --reason "AI slop"'
     let contents = open --raw $file | from td
     let entry = $contents | where username == "eviluser" | first
@@ -105,10 +95,20 @@ export def "test cli denounce with reason" [] {
   }
 }
 
+export def "test cli denounce updates existing reason" [] {
+  with-temp-vouched $VOUCHED { |file|
+    nu -c $'use vouch *; denounce github:badguy --vouched-file ($file) --write --reason "new reason"'
+    let contents = open --raw $file | from td
+    let entry = $contents | where username == "badguy" | first
+    assert equal $entry.type "denounce"
+    assert equal $entry.details "new reason"
+  }
+}
+
 # --- remove ---
 
 export def "test cli remove previews by default" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     let output = nu -c $'use vouch *; remove mitchellh --vouched-file ($file)'
     assert (not ($output | str contains "mitchellh")) "preview should not contain removed user"
     let contents = open --raw $file | from td
@@ -118,7 +118,7 @@ export def "test cli remove previews by default" [] {
 }
 
 export def "test cli remove writes with --write" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     nu -c $'use vouch *; remove mitchellh --vouched-file ($file) --write'
     let contents = open --raw $file | from td
     let entry = $contents | where username == "mitchellh"
@@ -127,7 +127,7 @@ export def "test cli remove writes with --write" [] {
 }
 
 export def "test cli remove removes denounced with --write" [] {
-  with-temp-vouched { |file|
+  with-temp-vouched $VOUCHED { |file|
     nu -c $'use vouch *; remove github:badguy --vouched-file ($file) --write'
     let contents = open --raw $file | from td
     let entry = $contents | where username == "badguy"

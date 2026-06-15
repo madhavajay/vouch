@@ -102,6 +102,13 @@ export def "test denounce-user with reason" [] {
   assert equal $entry.details "spam"
 }
 
+export def "test denounce-user updates existing reason" [] {
+  let result = sample-records | denounce-user "github:spammer" "new reason"
+  let entry = $result | where username == "spammer" | first
+  assert equal $entry.type "denounce"
+  assert equal $entry.details "new reason"
+}
+
 export def "test denounce-user replaces vouched user" [] {
   let result = sample-records | denounce-user "mitchellh"
   let status = $result | check-user "mitchellh"

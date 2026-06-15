@@ -903,14 +903,15 @@ def gh-apply-action [
 
   if $action == "denounce" {
     let status = $records | check-user $target_user --default-platform github
-    if $status == "denounced" {
+    let updating = $status == "denounced"
+    if $updating and ($reason | is-empty) {
       print $"($target_user) is already denounced"
       return { status: "unchanged", acted: false }
     }
 
     if $dry_run {
       let entry = if ($reason | is-empty) { $"-($target_user)" } else { $"-($target_user) ($reason)" }
-      print ("(dry-run) Would add " + $"($entry) to ($file)")
+      print $"(dry-run) Would denounce ($entry) in ($file)"
       return { status: "denounced", acted: false }
     }
 
